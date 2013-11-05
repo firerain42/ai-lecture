@@ -11,6 +11,7 @@ public class Cell {
 	
 	
 	// Getter + Setter
+	//test
 	
 	public LinkedList<String> getPath() {
 		return path;
