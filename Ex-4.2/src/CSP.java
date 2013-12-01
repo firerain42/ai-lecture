@@ -3,13 +3,15 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
+import java.util.PriorityQueue;
 import java.util.Set;
 
 
-public class CSP {
+public class CSP implements Cloneable {
 
 	@SuppressWarnings("unchecked")
 	public LinkedList<Integer>[][] domains = (LinkedList<Integer>[][])new LinkedList[9][9];
@@ -38,8 +40,6 @@ public class CSP {
 			for (int i = 0; i < 9; i++) {
 				for (int j = 0; j < 9; j++) {
 					char c = (char) reader.read();
-//					int number = Integer.parseInt(String.valueOf((char)reader.read()));
-					System.err.println(String.format("(%d, %d) = %s", j, i, c));
 					int number = Integer.parseInt(String.valueOf(c));
 					if (number != 0) {
 						LinkedList<Integer> domain = new LinkedList<>();
@@ -50,6 +50,10 @@ public class CSP {
 				reader.readLine();		// skip linebreak
 			}
 		}
+	}
+	
+	public LinkedList<Integer> getDomain(int x, int y) {
+		return domains[y][x];
 	}
 	
 	public void AC3() throws NotSolvableException {
@@ -77,7 +81,7 @@ public class CSP {
 		Set<Arc> todo = new LinkedHashSet<>(3240);		// 3240 = binomial coefficient(81,2)
 		for (int i = 0; i < 9; i++) {
 			for (int j = 0; j < 9; j++) {
-				todo.addAll(getNeighbors(i,j));
+				todo.addAll(getNeighbors(j,i));
 			}
 		}
 		return todo;
@@ -110,27 +114,53 @@ public class CSP {
 		return getNeighbors(a.x, a.y);
 	}
 	
-	private Set<Arc> getNeighbors(int i, int j) {
+	/**
+	 * get all constrains which involve the variable at <code>(i,j)</code>.
+	 * It is guaranteed that every arc has <code>(i,j)</code> as the first variable.
+	 * @param x
+	 * @param y
+	 * @return
+	 */
+	private Set<Arc> getNeighbors(int x, int y) {
 		Set<Arc> constrains = new LinkedHashSet<CSP.Arc>(24);
 		for (int k = 0; k < 9; k++) {
-			if (k != j) {
-				constrains.add(new Arc(j, i, k, i));	// row constrain
+			if (k != x) {
+				constrains.add(new Arc(x, y, k, y));	// row constrain
 			}
-			if (k != i) {
-				constrains.add(new Arc(j, i, j, k));	// column constrain
+			if (k != y) {
+				constrains.add(new Arc(x, y, x, k));	// column constrain
 			}
 			
-			final int xOffset = 3 * (j / 3);
-			final int yOffset = 3 * (i / 3);
-			final int x = xOffset + k % 3;
-			final int y = yOffset + k / 3;
+			final int xOffset = 3 * (x / 3);
+			final int yOffset = 3 * (y / 3);
+			final int xBox = xOffset + k % 3;
+			final int yBox = yOffset + k / 3;
 
-			if ((x != j || y != i) && (x != i || y != j)) {
-				constrains.add(new Arc(j, i, x, y));	// block constrain
+			if ((xBox != x || yBox != y) && (xBox != y || yBox != x)) {
+				constrains.add(new Arc(x, y, xBox, yBox));	// block constrain
 			}
 		}
 
 		return constrains;
+	}
+	
+	
+	/**
+	 * count the constrains which are not satisfied with the assignment of the 
+	 * variable at <code>pos</code> with <code>value</code>.
+	 * @param pos position of the variable
+	 * @param value 
+	 * @return
+	 */
+	private int countNotSatisfiedConstrains(Point pos, int value) {
+		int counter = 0;
+		Set<Arc> constrains = getNeighbors(pos);
+		for (Arc con : constrains) {
+			if (!con.isSatisfied(value)) {
+				counter++;
+			}
+		}
+		return counter;
 	}
 
 	/**
@@ -141,12 +171,28 @@ public class CSP {
 		
 		public Arc(int x1, int y1, int x2, int y2) {
 			if (x1 == x2 && y1 == y2 || x1 == y2 && y1 == x2) {
-//				throw new IllegalArgumentException("invalid constrain");
+				throw new IllegalArgumentException("invalid constrain");
 			}
 			a = new Point(x1, y1);
 			b = new Point(x2, y2);
 		}
 		
+		/**
+		 * returns <code>true</code> if there is any value for which this 
+		 * constrain is satisfied with the assignment of 
+		 * the variable at <code>(x1, y1)</code> with <code>value</code>.
+		 * @param value
+		 * @return
+		 */
+		public boolean isSatisfied(int value) {
+			for (int valB : domains[b.y][b.x]) {
+				if (valB != value) {
+					return true;
+				}
+			}
+			return false;
+		}
+
 		/**
 		 * reduces all values in the domains of a and b that do not satisfy this constrain.
 		 * @return a <code>Set</code> of constrains which could be affected by this reduction.
@@ -211,4 +257,134 @@ public class CSP {
 			return String.format("{(%d,%d)!=(%d,%d)}", a.x, a.y, b.x, b.y);
 		}
 	}
+
+	
+
+	/**
+	 * adds the position of all unbound variables to <code>variables</code>.
+	 * @param variables
+	 */
+	public void getUnboundVariables( PriorityQueue<Point> variables) {
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				if (domains[i][j].size() > 1) {
+					variables.add(new Point(j, i));
+				}
+			}
+		}
+		
+	}
+	
+	public ValueComperator valueComperator(Point varPos) {
+		return new ValueComperator(varPos);
+	}
+
+	/**
+	 * tie breaking for the values.
+	 */
+	class ValueComperator implements Comparator<Integer> {
+		
+		Point varPos; 
+		
+		/**
+		 * @param varPos the position of the variable for which the values should be ordered.
+		 */
+		public ValueComperator(Point varPos) {
+			this.varPos = varPos;
+		}
+
+		@Override
+		public int compare(Integer val1, Integer val2) {
+			int conflicts1 = countNotSatisfiedConstrains(varPos, val1);
+			int conflicts2 = countNotSatisfiedConstrains(varPos, val2);
+			
+			if (conflicts1 != conflicts2) {
+				return (conflicts1 < conflicts2 ? -1 : 1);
+			}
+			
+			if (val1 != val2) {
+				return (val1 < val2 ? -1 : 1);
+			}
+			
+			return 0;
+		}
+		
+	}
+	
+	
+	public VariableComperator variableComperator() {
+		return new VariableComperator();
+	}
+	
+	/**
+	 * tie breaking for the variable selection.
+	 */
+	class VariableComperator implements Comparator<Point> {
+		@Override
+		public int compare(Point var1, Point var2) {
+			int size1 = domains[var1.y][var1.x].size(); 
+			int size2 = domains[var2.y][var2.x].size(); 
+
+			if (size1 != size2) {
+				return (size1 < size2 ? -1 : 1);		// variables with small domains first
+			} 
+			if (var1.y != var2.y) {
+				return (var1.y < var2.y ? -1 : 1);		// then the upper variable
+			} 
+			if (var1.x != var2.x) {
+				return (var1.x < var2.x ? -1 : 1);		// and finally the leftmost
+			} 
+
+			return 0;
+		}
+	}
+	
+	@Override
+	@SuppressWarnings("unchecked")
+	public Object clone() throws CloneNotSupportedException {
+		CSP clone = (CSP)super.clone();
+
+		LinkedList<Integer>[][] domains = (LinkedList<Integer>[][])new LinkedList[9][9];
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				domains[i][j] = (LinkedList<Integer>)this.domains[i][j].clone();
+			}
+		}
+
+		return clone;
+	}
+	
+	/**
+	 * reduces the domain of the variable at <code>pos</code> to the value <code>val</code>.
+	 * @param pos
+	 * @param val
+	 */
+	public void fixVariable(Point pos, int val) {
+		LinkedList<Integer> values = new LinkedList<Integer>();
+		values.add(val);
+		this.domains[pos.y][pos.x] = values;
+	}
+	
+	/**
+	 * returns <code>true</code> if all domains consist only of one value 
+	 * and this value does not violate any constrain.
+	 * @return
+	 */
+	public boolean isSolution() {
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				if (domains[i][j].size() != 1) {
+					return false;
+				}
+				
+				int val = domains[i][j].peek();
+				if (countNotSatisfiedConstrains(new Point(j, i), val) != 0) {
+					return false;
+				}
+			}
+		}
+		return true;
+		
+	}
+
 }
