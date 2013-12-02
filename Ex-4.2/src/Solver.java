@@ -4,16 +4,43 @@ import java.util.PriorityQueue;
 
 public class Solver {
 	
+	
+	// ---------------------------------------------------------------------------------
+	// Fields
+	// ---------------------------------------------------------------------------------
+	
 	private CSP csp;
+	
+	
+	// ---------------------------------------------------------------------------------
+	// Constructor
+	// ---------------------------------------------------------------------------------
 	
 	public Solver(CSP csp) {
 		this.csp = csp;
 	}
 	
+	
+	// ---------------------------------------------------------------------------------
+	// Methods
+	// ---------------------------------------------------------------------------------
+	
+	public String printSolution() throws NotSolvableException {
+		int[][] solution = solve();
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				sb.append(solution[i][j]);
+			}
+			sb.append("\n");
+		}
+		return sb.toString();
+	}
+
 	public int[][] solve() throws NotSolvableException {
 		return backtrack(csp);
 	}
-
+	
 	private int[][] backtrack(CSP csp) throws NotSolvableException {
 		PriorityQueue<Point> variables = new PriorityQueue<>(81, csp.variableComperator());
 		csp.getUnboundVariables(variables);	
@@ -52,20 +79,6 @@ public class Solver {
 		
 		// no value solves the Sudoku.
 		throw new NotSolvableException();
-	}
-	
-	public void printSolution() throws NotSolvableException {
-		int[][] solution = solve();
-		for (int i = 0; i < 9; i++) {
-			System.out.print("[");
-			for (int j = 0; j < 9; j++) {
-				System.out.print(solution[i][j]);
-				if (j != 8) {
-					System.out.print(",");
-				}
-			}
-			System.out.println("]");
-		}
 	}
 
 }

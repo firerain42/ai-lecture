@@ -3,6 +3,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
@@ -13,156 +14,11 @@ import java.util.Set;
 
 public class CSP implements Cloneable {
 
-	@SuppressWarnings("unchecked")
-	public LinkedList<Integer>[][] domains = (LinkedList<Integer>[][])new LinkedList[9][9];
 	
-	/**
-	 * Constructs a <code>CSP</code> form a file.
-	 * @param filename
-	 */
-	public CSP(String filename) throws IOException {
-		for (int i = 0; i < 9; i++) {
-			for (int j = 0; j < 9; j++) {
-				domains[i][j] = new LinkedList<>(Arrays.asList(1,2,3,4,5,6,7,8,9));
-			}
-		}
-		
-		loadFromFile(filename);
-		
-	}
-
-	/**
-	 * Initializes <code>domains</code> with a Sudoku loaded form a file.
-	 * @param filename
-	 */
-	private void loadFromFile(String filename) throws IOException {
-		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
-			for (int i = 0; i < 9; i++) {
-				for (int j = 0; j < 9; j++) {
-					char c = (char) reader.read();
-					int number = Integer.parseInt(String.valueOf(c));
-					if (number != 0) {
-						LinkedList<Integer> domain = new LinkedList<>();
-						domain.add(number);
-						domains[i][j] = domain;
-					}
-				}
-				reader.readLine();		// skip linebreak
-			}
-		}
-	}
+	// ---------------------------------------------------------------------------------
+	// Inner Classes
+	// ---------------------------------------------------------------------------------
 	
-	public LinkedList<Integer> getDomain(int x, int y) {
-		return domains[y][x];
-	}
-	
-	public void AC3() throws NotSolvableException {
-		Set<Arc> todo = getInitArcs();
-		
-		Iterator<Arc> iter = todo.iterator();
-		while (iter.hasNext()) {
-			Arc arc = iter.next();
-			iter.remove();
-			
-			Set<Arc> neighbors = arc.arcReduce();
-			todo.addAll(neighbors);
-			iter = todo.iterator();
-			
-		}
-		
-	}
-	
-
-	/**
-	 * Get all initial Constrains.
-	 * @return
-	 */
-	private Set<Arc> getInitArcs() {
-		Set<Arc> todo = new LinkedHashSet<>(3240);		// 3240 = binomial coefficient(81,2)
-		for (int i = 0; i < 9; i++) {
-			for (int j = 0; j < 9; j++) {
-				todo.addAll(getNeighbors(j,i));
-			}
-		}
-		return todo;
-	}
-	
-
-	/**
-	 * Prints the domains to stdout.
-	 */
-	public void print() {
-		for (int i = 0; i < 9; i++) {
-			System.out.print("[");
-			for (int j = 0; j < 9; j++) {
-				LinkedList<Integer> domain = domains[i][j];
-				if (domain.size() == 1) {
-					System.out.print(domain.peek());
-				} else {
-					System.out.print(domain);
-				}
-				
-				if (j != 8) {
-					System.out.print(",");
-				}
-			}
-			System.out.print("]\n");
-		}
-	}
-
-	private Set<Arc> getNeighbors(Point a) {
-		return getNeighbors(a.x, a.y);
-	}
-	
-	/**
-	 * get all constrains which involve the variable at <code>(i,j)</code>.
-	 * It is guaranteed that every arc has <code>(i,j)</code> as the first variable.
-	 * @param x
-	 * @param y
-	 * @return
-	 */
-	private Set<Arc> getNeighbors(int x, int y) {
-		Set<Arc> constrains = new LinkedHashSet<CSP.Arc>(24);
-		for (int k = 0; k < 9; k++) {
-			if (k != x) {
-				constrains.add(new Arc(x, y, k, y));	// row constrain
-			}
-			if (k != y) {
-				constrains.add(new Arc(x, y, x, k));	// column constrain
-			}
-			
-			final int xOffset = 3 * (x / 3);
-			final int yOffset = 3 * (y / 3);
-			final int xBox = xOffset + k % 3;
-			final int yBox = yOffset + k / 3;
-
-			if ((xBox != x || yBox != y) && (xBox != y || yBox != x)) {
-				constrains.add(new Arc(x, y, xBox, yBox));	// block constrain
-			}
-		}
-
-		return constrains;
-	}
-	
-	
-	/**
-	 * count the constrains which are not satisfied with the assignment of the 
-	 * variable at <code>pos</code> with <code>value</code>.
-	 * @param pos position of the variable
-	 * @param value 
-	 * @return
-	 */
-	private int countNotSatisfiedConstrains(Point pos, int value) {
-		int counter = 0;
-		Set<Arc> constrains = getNeighbors(pos);
-		for (Arc con : constrains) {
-			if (!con.isSatisfied(value)) {
-				counter++;
-			}
-		}
-		return counter;
-	}
-
 	/**
 	 * This class models binary constrains which are arcs in the constrain graph.
 	 */
@@ -177,22 +33,6 @@ public class CSP implements Cloneable {
 			b = new Point(x2, y2);
 		}
 		
-		/**
-		 * returns <code>true</code> if there is any value for which this 
-		 * constrain is satisfied with the assignment of 
-		 * the variable at <code>(x1, y1)</code> with <code>value</code>.
-		 * @param value
-		 * @return
-		 */
-		public boolean isSatisfied(int value) {
-			for (int valB : domains[b.y][b.x]) {
-				if (valB != value) {
-					return true;
-				}
-			}
-			return false;
-		}
-
 		/**
 		 * reduces all values in the domains of a and b that do not satisfy this constrain.
 		 * @return a <code>Set</code> of constrains which could be affected by this reduction.
@@ -240,7 +80,7 @@ public class CSP implements Cloneable {
 				return new LinkedHashSet<CSP.Arc>();	// add no new arcs
 			}
 		}
-		
+
 		@Override
 		public boolean equals(Object obj) {
 			if (! (obj instanceof Arc)) {
@@ -252,32 +92,28 @@ public class CSP implements Cloneable {
 					|| comp.a.equals(this.b) && comp.b.equals(this.a);
 		}
 		
+		/**
+		 * returns <code>true</code> if there is any value for which this 
+		 * constrain is satisfied with the assignment of 
+		 * the variable at <code>(x1, y1)</code> with <code>value</code>.
+		 * @param value
+		 * @return
+		 */
+		public boolean isSatisfied(int value) {
+			for (int valB : domains[b.y][b.x]) {
+				if (valB != value) {
+					return true;
+				}
+			}
+			return false;
+		}
+		
 		@Override
 		public String toString() {
 			return String.format("{(%d,%d)!=(%d,%d)}", a.x, a.y, b.x, b.y);
 		}
 	}
 
-	
-
-	/**
-	 * adds the position of all unbound variables to <code>variables</code>.
-	 * @param variables
-	 */
-	public void getUnboundVariables( PriorityQueue<Point> variables) {
-		for (int i = 0; i < 9; i++) {
-			for (int j = 0; j < 9; j++) {
-				if (domains[i][j].size() > 1) {
-					variables.add(new Point(j, i));
-				}
-			}
-		}
-		
-	}
-	
-	public ValueComperator valueComperator(Point varPos) {
-		return new ValueComperator(varPos);
-	}
 
 	/**
 	 * tie breaking for the values.
@@ -310,12 +146,8 @@ public class CSP implements Cloneable {
 		}
 		
 	}
-	
-	
-	public VariableComperator variableComperator() {
-		return new VariableComperator();
-	}
-	
+
+
 	/**
 	 * tie breaking for the variable selection.
 	 */
@@ -338,6 +170,57 @@ public class CSP implements Cloneable {
 			return 0;
 		}
 	}
+
+	
+	
+	// ---------------------------------------------------------------------------------
+	// Fields
+	// ---------------------------------------------------------------------------------
+	
+	
+	@SuppressWarnings("unchecked")
+	public LinkedList<Integer>[][] domains = (LinkedList<Integer>[][])new LinkedList[9][9];
+	
+	
+	// ---------------------------------------------------------------------------------
+	// Constructor
+	// ---------------------------------------------------------------------------------
+	
+	/**
+	 * Constructs a <code>CSP</code> form a file.
+	 * @param filename
+	 */
+	public CSP(String filename) throws IOException {
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				domains[i][j] = new LinkedList<>(Arrays.asList(1,2,3,4,5,6,7,8,9));
+			}
+		}
+		
+		loadFromFile(filename);
+		
+	}
+	
+	
+	// ---------------------------------------------------------------------------------
+	// Methods
+	// ---------------------------------------------------------------------------------
+	
+	public void AC3() throws NotSolvableException {
+		Set<Arc> todo = getInitArcs();
+		
+		Iterator<Arc> iter = todo.iterator();
+		while (iter.hasNext()) {
+			Arc arc = iter.next();
+			iter.remove();
+			
+			Set<Arc> neighbors = arc.arcReduce();
+			todo.addAll(neighbors);
+			iter = todo.iterator();
+			
+		}
+		
+	}
 	
 	@Override
 	@SuppressWarnings("unchecked")
@@ -351,6 +234,8 @@ public class CSP implements Cloneable {
 			}
 		}
 
+		clone.setDomains(domains);
+		
 		return clone;
 	}
 	
@@ -363,6 +248,25 @@ public class CSP implements Cloneable {
 		LinkedList<Integer> values = new LinkedList<Integer>();
 		values.add(val);
 		this.domains[pos.y][pos.x] = values;
+	}
+	
+	public LinkedList<Integer> getDomain(int x, int y) {
+		return domains[y][x];
+	}
+
+	/**
+	 * adds the position of all unbound variables to <code>variables</code>.
+	 * @param variables
+	 */
+	public void getUnboundVariables( PriorityQueue<Point> variables) {
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				if (domains[i][j].size() > 1) {
+					variables.add(new Point(j, i));
+				}
+			}
+		}
+		
 	}
 	
 	/**
@@ -386,5 +290,164 @@ public class CSP implements Cloneable {
 		return true;
 		
 	}
+	
+	/**
+	 * Prints the domains to stdout.
+	 */
+	public void print() {
+		System.out.println(this.toString());
+	}
 
+
+	
+
+	/**
+	 * @return a <code>String</code> of the format specified in the exercise sheet.
+	 */
+	public String printDomains() {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				sb.append(String.format("%d,%d: ", j, i));
+				Collections.sort(domains[i][j]);
+				for (int k = 0; k < domains[i][j].size(); k++) {
+					sb.append(domains[i][j].get(k));
+					if (k != domains[i][j].size()-1) {
+						sb.append(",");
+					}
+				}
+				sb.append("\n");
+			}
+
+		}
+		return sb.toString();
+	}
+	
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		for (int i = 0; i < 9; i++) {
+			sb.append("[");
+			for (int j = 0; j < 9; j++) {
+				LinkedList<Integer> domain = domains[i][j];
+				if (domain.size() == 1) {
+					sb.append(domain.peek());
+				} else {
+					sb.append(domain);
+				}
+				
+				if (j != 8) {
+					sb.append(",");
+				}
+			}
+			sb.append("]\n");
+		}
+		return sb.toString();
+	}
+	
+	public ValueComperator valueComperator(Point varPos) {
+		return new ValueComperator(varPos);
+	}
+	
+	
+	public VariableComperator variableComperator() {
+		return new VariableComperator();
+	}
+
+	protected void setDomains(LinkedList<Integer>[][] domains) {
+		this.domains = domains;
+	}
+
+	
+
+	/**
+	 * count the constrains which are not satisfied with the assignment of the 
+	 * variable at <code>pos</code> with <code>value</code>.
+	 * @param pos position of the variable
+	 * @param value 
+	 * @return
+	 */
+	private int countNotSatisfiedConstrains(Point pos, int value) {
+		int counter = 0;
+		Set<Arc> constrains = getNeighbors(pos);
+		for (Arc con : constrains) {
+			if (!con.isSatisfied(value)) {
+				counter++;
+			}
+		}
+		return counter;
+	}
+	
+	/**
+	 * Get all initial Constrains.
+	 * @return
+	 */
+	private Set<Arc> getInitArcs() {
+		Set<Arc> todo = new LinkedHashSet<>(3240);		// 3240 = binomial coefficient(81,2)
+		for (int i = 0; i < 9; i++) {
+			for (int j = 0; j < 9; j++) {
+				todo.addAll(getNeighbors(j,i));
+			}
+		}
+		return todo;
+	}
+
+	/**
+	 * get all constrains which involve the variable at <code>(i,j)</code>.
+	 * It is guaranteed that every arc has <code>(i,j)</code> as the first variable.
+	 * @param x
+	 * @param y
+	 * @return
+	 */
+	private Set<Arc> getNeighbors(int x, int y) {
+		Set<Arc> constrains = new LinkedHashSet<CSP.Arc>(24);
+		for (int k = 0; k < 9; k++) {
+			if (k != x) {
+				constrains.add(new Arc(x, y, k, y));	// row constrain
+			}
+			if (k != y) {
+				constrains.add(new Arc(x, y, x, k));	// column constrain
+			}
+			
+			final int xOffset = 3 * (x / 3);
+			final int yOffset = 3 * (y / 3);
+			final int xBox = xOffset + k % 3;
+			final int yBox = yOffset + k / 3;
+
+			if ((xBox != x || yBox != y) && (xBox != y || yBox != x)) {
+				constrains.add(new Arc(x, y, xBox, yBox));	// block constrain
+			}
+		}
+
+		return constrains;
+	}
+	
+	
+	private Set<Arc> getNeighbors(Point a) {
+		return getNeighbors(a.x, a.y);
+	}
+	
+	/**
+	 * Initializes <code>domains</code> with a Sudoku loaded form a file.
+	 * @param filename
+	 */
+	private void loadFromFile(String filename) throws IOException {
+		try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
+			for (int i = 0; i < 9; i++) {
+				for (int j = 0; j < 9; j++) {
+					char c = (char) reader.read();
+					int number = Integer.parseInt(String.valueOf(c));
+					if (number != 0) {
+						LinkedList<Integer> domain = new LinkedList<>();
+						domain.add(number);
+						domains[i][j] = domain;
+					}
+				}
+				reader.readLine();		// skip linebreak
+			}
+		}
+	}
+	
+
+	
 }

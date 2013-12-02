@@ -1,3 +1,7 @@
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+
 
 public class Main {
 
@@ -12,14 +16,24 @@ public class Main {
 		try {
 			CSP csp = new CSP(args[0]);
 			csp.AC3();
-			csp.print();
 			if (solve) {
 				Solver s = new Solver(csp);
-				s.printSolution();
+				writeToFile(s.printSolution());
+			} else {
+				writeToFile(csp.printDomains());
 			}
 		} catch (NotSolvableException e) {
 			System.out.println("This Sudoku is not solvable.");
 		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private static void writeToFile(String data) {
+		System.out.println(data);
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter("output"))) {
+			writer.write(data);
+		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
