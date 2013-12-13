@@ -1,8 +1,8 @@
-
 public class Main {
 
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		Resolver res = new Resolver(args[0]);
+		res.isInconsistent(args[1]);
 
 	}
 
