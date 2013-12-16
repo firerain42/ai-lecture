@@ -17,7 +17,6 @@ public class Clause {
 		for(String lit: temp)
 			literals.add(new Literal(lit));
 		Collections.sort(literals);
-		System.out.println(this);
 	}
 	
 	public Clause(Set<Literal> newLiterals){
@@ -51,7 +50,7 @@ public class Clause {
 					newLiterals.remove(cl);
 					Clause resolvent = new Clause(newLiterals);
 
-					System.out.println(String.format("%s ; %s => %s", this,c, resolvent.toString()));
+//					System.out.println(String.format("%s ; %s => %s", this,c, resolvent.toString()));
 					resolvents.add(resolvent);
 				}
 			}

@@ -8,6 +8,7 @@ import java.util.Set;
 public class Resolver {
 	Set<Clause> allClauses = new HashSet<Clause>();
 	Set<Clause> newClauses = new HashSet<Clause>();
+	Set<Clause> clausesToResolve;
 	
 	public Resolver (String s){
 		try {
@@ -24,9 +25,13 @@ public class Resolver {
 	
 	public boolean isInconsistent(Set<Clause> alpha) {
 		allClauses.addAll(alpha);
+		int itnumber = 0;
+		System.out.printf("Number of Clauses in Iteration %d : %d \n"  , itnumber, allClauses.size());
+		clausesToResolve = new HashSet<>(allClauses);
 		while (true){
+			itnumber++;
 			newClauses.clear();
-			for(Clause c1 :allClauses)
+			for(Clause c1 : clausesToResolve)
 				for(Clause c2:allClauses)
 				{
 					Set<Clause> resolvents = c1.resolvents(c2);
@@ -35,11 +40,15 @@ public class Resolver {
 						if(c.isEmptyClause())
 							return true;
 					newClauses.addAll(resolvents);
+					
 				}
+			System.out.printf("Number of new Clauses in Iteration %d : %d \n"  , itnumber, newClauses.size());
 			int k = allClauses.size();
 			allClauses.addAll(newClauses);
 			if(allClauses.size() == k)
 				return false;
+			System.out.printf("Number of all Clauses in Iteration %d : %d \n"  , itnumber, allClauses.size());
+			clausesToResolve = new HashSet<>(newClauses);
 		}		
 	}
 }
