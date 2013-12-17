@@ -32,7 +32,7 @@ public class Resolver {
 			itnumber++;
 			newClauses.clear();
 			for(Clause c1 : clausesToResolve)
-				for(Clause c2:allClauses)
+				for(Clause c2: allClauses)
 				{
 					Set<Clause> resolvents = c1.resolvents(c2);
 					//return true if empty clause is found
